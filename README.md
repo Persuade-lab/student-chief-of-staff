@@ -50,7 +50,10 @@ Instead of being another calendar or task manager, it acts as an AI chief of sta
 - ✍️ draft email responses
 - ⏱️ find free time automatically
 - 📆 create, update, reschedule, and delete calendar events
-- 🚨 notify you when something actually deserves attention
+- 🚨 send urgent native desktop notifications with clickable deep links
+- 🧭 recommend conflict-free work sessions for urgent deadlines
+- 🔁 offer alternative work times before scheduling
+- ✅ recognize when work time has already been scheduled
 - 💬 let you manage everything conversationally
 
 ---
@@ -86,6 +89,32 @@ Store the event locally
 ```
 
 Your Google Calendar is updated automatically.
+
+### Proactive deadline flow
+
+The MVP also works without waiting for a chat message:
+
+```text
+Canvas / Google Calendar deadline
+        ↓
+Background monitor detects it
+        ↓
+AI classification + deadline-aware priority
+        ↓
+Urgent? → native desktop notification
+        ↓ click
+Focused Attention view
+        ↓
+Existing work session? ── yes → show it and stop
+        │
+        no
+        ↓
+Recommend a conflict-free 90-minute slot
+        ↓
+Schedule this / Find another time
+        ↓
+Google Calendar updated
+```
 
 ---
 
@@ -245,9 +274,11 @@ A background runtime periodically:
 
 - synchronizes external services
 - processes new information
-- refreshes priorities
+- refreshes deadline-aware priorities
 - updates runtime state
-- generates relevant notifications
+- interrupts the student only for urgent items
+
+Urgent calendar deadlines can open a focused **Attention** view. The Chief of Staff checks the student's existing schedule, recommends a conflict-free 90-minute work session, lets the student cycle through alternatives, and writes the selected session to Google Calendar. If a matching work session already exists, it recognizes that the student has already acted instead of recommending another one.
 
 </td>
 </tr>
@@ -296,7 +327,7 @@ The LLM handles semantic understanding while deterministic code handles operatio
 
 ## 🖥️ Interface
 
-The Streamlit application provides five main views.
+The Streamlit application provides five main views plus a deep-linked **Attention** experience for urgent items.
 
 ### 💬 Chat
 
@@ -317,6 +348,16 @@ View the student profile used for opportunity matching.
 ### ⚙️ System
 
 Inspect scheduler, synchronization, and runtime state.
+
+### ⚠️ Attention
+
+Clicking an urgent desktop notification opens a focused view for the exact deadline that needs attention. For actionable calendar deadlines, the interface can:
+
+- show why the item is urgent
+- detect an existing matching work/study session
+- recommend a conflict-free 90-minute slot when no session exists
+- cycle through alternative free times
+- schedule the selected work session directly to Google Calendar
 
 ---
 
@@ -381,6 +422,7 @@ Agents_for_Humans/
 | **SQLite** | Persistent local data, memory, analysis, and state |
 | **Streamlit** | Interactive web interface |
 | **Pytest** | Automated testing |
+| **terminal-notifier** *(optional, macOS)* | Clickable native desktop notifications |
 
 ---
 
@@ -429,7 +471,18 @@ credentials.json
 
 The first authenticated run will create the local OAuth token required for Gmail and Google Calendar access.
 
-### 6. Run the application
+### 6. Optional: enable clickable macOS notifications
+
+The application falls back to AppleScript notifications on macOS, but clickable deep links use `terminal-notifier`.
+
+```bash
+brew install terminal-notifier
+open "$(brew --prefix terminal-notifier)/terminal-notifier.app"
+```
+
+Allow notifications for `terminal-notifier` in macOS System Settings when prompted.
+
+### 7. Run the application
 
 ```bash
 streamlit run streamlit_app.py
@@ -503,7 +556,7 @@ Opportunity Matching
   ↓
 Action Planning
   ↓
-Notification / Draft / Ignore
+Urgent-only Interrupt / Draft / Ignore
 ```
 
 ### Calendar
@@ -535,6 +588,9 @@ The system separates external data from agent reasoning.
 - Calendar writes are explicitly routed through the Google Calendar integration.
 - Canvas calendar subscriptions are treated as read-only.
 - Notification history prevents repeated identical alerts.
+- Only urgent items trigger interruptive desktop notifications.
+- Scheduling recommendations are computed deterministically from synchronized calendar state.
+- Work sessions require an explicit user click before being created.
 - Sensitive credentials remain outside source control.
 
 ---
@@ -547,7 +603,7 @@ Run the automated test suite with:
 python -m pytest -q
 ```
 
-The project includes tests for calendar operations, email processing, storage, scheduling behavior, all-day events, and other core functionality.
+The MVP currently passes **54 automated tests** covering calendar operations, email processing, storage, scheduling behavior, all-day events, notification behavior, and other core functionality.
 
 ---
 
@@ -586,7 +642,13 @@ Useful work should happen even when the student isn't actively chatting with the
 **2. Deterministic where it matters**  
 LLMs understand intent. Code handles things like conflict detection, persistence, deduplication, and time calculations.
 
-**3. One conversational control layer**  
+**3. Interrupt only when necessary**  
+Most information is processed silently. Native notifications are reserved for urgent items that deserve immediate attention.
+
+**4. Close the loop**  
+The agent should not stop at identifying a problem. For urgent deadlines it can recommend a feasible time, let the student choose, schedule it, and later recognize that the action has already been taken.
+
+**5. One conversational control layer**  
 Students shouldn't need to remember which app contains which piece of information.
 
 ---
