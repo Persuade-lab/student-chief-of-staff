@@ -1,0 +1,78 @@
+[
+  {
+    "id": "event_001",
+    "title": "CIS 2400",
+    "date": "2026-08-24",
+    "time": "10:00 AM",
+    "end_time": "11:30 AM"
+  },
+  {
+    "id": "event_002",
+    "title": "ESE 2150",
+    "date": "2026-08-24",
+    "time": "1:00 PM",
+    "end_time": "2:30 PM"
+  },
+  {
+    "id": "event_003",
+    "title": "Study Session",
+    "date": "2026-08-24",
+    "time": "4:00 PM",
+    "end_time": "5:00 PM"
+  },
+  {
+    "id": "event_004",
+    "title": "Benjamin Franklin Seminar",
+    "date": "2026-08-25",
+    "time": "11:00 AM",
+    "end_time": "12:00 PM"
+  },
+  {
+    "id": "event_005",
+    "title": "Lunch with Friend",
+    "date": "2026-08-25",
+    "time": "1:00 PM",
+    "end_time": "2:00 PM"
+  },
+  {
+    "id": "event_006",
+    "title": "Computer Engineering Lab",
+    "date": "2026-08-25",
+    "time": "3:00 PM",
+    "end_time": "5:00 PM"
+  },
+  {
+    "id": "event_007",
+    "title": "CIS Homework",
+    "date": "2026-08-26",
+    "time": "9:00 AM",
+    "duration_minutes": 90
+  },
+  {
+    "id": "event_008",
+    "title": "Econ 0100",
+    "date": "2026-08-26",
+    "time": "12:00 PM",
+    "end_time": "1:00 PM"
+  },
+  {
+    "id": "event_009",
+    "title": "Research Meeting",
+    "date": "2026-08-26",
+    "time": "3:00 PM",
+    "end_time": "4:00 PM"
+  },
+  {
+    "id": "event_010",
+    "title": "Gym",
+    "date": "2026-08-27",
+    "time": "5:00 PM",
+    "duration_minutes": 60
+  },
+  {
+    "id": "7ddf7c3f-faef-42b1-b402-be9160b527dd",
+    "title": "Gym",
+    "date": "2025-07-14",
+    "time": "21:00"
+  }
+]

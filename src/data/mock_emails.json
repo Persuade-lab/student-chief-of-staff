@@ -1,0 +1,29 @@
+[
+  {
+    "id": "email_001",
+    "sender": "professor@upenn.edu",
+    "recipient": "student@upenn.edu",
+    "subject": "ESE 2150 Assignment Deadline Changed",
+    "body": "The deadline for Homework 3 has been moved from Friday to Wednesday at 11:59 PM.",
+    "timestamp": "2026-08-19T09:15:00",
+    "read": false
+  },
+  {
+    "id": "email_002",
+    "sender": "career@upenn.edu",
+    "recipient": "student@upenn.edu",
+    "subject": "Research Opportunity in Robotics",
+    "body": "Applications for undergraduate research positions in robotics are now open. Applications close September 5.",
+    "timestamp": "2026-08-19T10:30:00",
+    "read": false
+  },
+  {
+    "id": "email_003",
+    "sender": "club@upenn.edu",
+    "recipient": "student@upenn.edu",
+    "subject": "Engineering Club Social",
+    "body": "Join us Friday evening for our engineering club social.",
+    "timestamp": "2026-08-19T12:00:00",
+    "read": true
+  }
+]

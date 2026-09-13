@@ -1,0 +1,45 @@
+[
+  {
+    "id": "CIS-2400",
+    "code": "CIS 2400",
+    "name": "Introduction to Computer Systems",
+    "description": "Introduction to computer systems and low-level programming.",
+    "instructor": "Professor Example",
+    "status": "active",
+
+    "schedule": [
+      {
+        "day": "Monday",
+        "start_time": "10:15",
+        "end_time": "11:45",
+        "location": "Towne 100"
+      },
+      {
+        "day": "Wednesday",
+        "start_time": "10:15",
+        "end_time": "11:45",
+        "location": "Towne 100"
+      }
+    ],
+
+    "assignments": [
+      {
+        "id": "A001",
+        "title": "Homework 1",
+        "description": "Introduction to computer systems.",
+        "due_date": "2026-09-03T23:59:00",
+        "status": "upcoming",
+        "url": null
+      }
+    ],
+
+    "announcements": [
+      {
+        "id": "ANN001",
+        "title": "Welcome to the course",
+        "body": "Welcome to CIS 2400.",
+        "timestamp": "2026-08-25T10:00:00"
+      }
+    ]
+  }
+]

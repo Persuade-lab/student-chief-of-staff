@@ -1,0 +1,24 @@
+credentials.json
+token.json
+.env
+student_chief_of_staff.db
+Not_used
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Local databases
+*.db
+
+# Installers
+*.pkg
