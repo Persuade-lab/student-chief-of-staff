@@ -42,6 +42,7 @@ Return exactly:
   "category": "...",
   "priority": "...",
   "action_required": true,
+  "response_required": false,
   "summary": "...",
   "reason": "...",
   "deadline": null
@@ -72,6 +73,15 @@ Rules:
   or
   YYYY-MM-DDTHH:MM:SS
 - If there is no deadline, use null.
+- Set response_required=true only when the student plausibly needs to personally
+  reply to the sender.
+- A task can require action without requiring a response.
+- Assignment reminders, Canvas notifications, grades, newsletters, job alerts,
+  automated notifications, and promotional emails should usually have
+  response_required=false.
+- Direct questions, requests for confirmation, meeting coordination, or personal
+  messages that reasonably expect a reply should usually have
+  response_required=true.
 """
 
 MODEL_ID = os.environ.get(

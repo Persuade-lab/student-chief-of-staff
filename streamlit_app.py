@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
 
 from src.agent.chief_of_staff import reset_agent, run_agent
 from src.integrations.calendar import add_event, suggest_free_slots
+from src.integrations.emails import build_email_brief
 from src.runtime.orchestrator import RuntimeOrchestrator
 from src.storage.database import (
     get_calendar_analysis,
@@ -132,6 +133,7 @@ def _upcoming_events(days: int = 7) -> list[dict]:
 
     return result
 
+
 def _clean_assignment_title(title: str) -> str:
     """
     Normalize a Canvas-style assignment title.
@@ -140,6 +142,7 @@ def _clean_assignment_title(title: str) -> str:
     "Canvas HW1 [BAN_ECON-0100-001 202630]"
     -> "Canvas HW1"
     """
+
     return title.split(" [", 1)[0].strip()
 
 
@@ -147,9 +150,7 @@ def _find_existing_work_session(
     assignment_title: str,
     date: str,
 ) -> dict | None:
-    """
-    Find an existing timed work session for this assignment.
-    """
+    """Find an existing timed work session for this assignment."""
 
     clean_title = _clean_assignment_title(
         assignment_title
@@ -222,7 +223,6 @@ def _render_attention_view(
     today = _now().date()
 
     st.title("⚠️ Needs your attention")
-
     st.subheader(event_title)
 
     if event_date == today:
@@ -280,9 +280,7 @@ def _render_attention_view(
         st.divider()
         st.subheader("Suggested plan")
 
-        # -------------------------------------------------
         # A matching study/work session already exists.
-        # -------------------------------------------------
         if existing_session:
             st.success(
                 "✓ You already have time scheduled "
@@ -314,10 +312,8 @@ def _render_attention_view(
                 "✓ This time is already on your calendar."
             )
 
-        # -------------------------------------------------
         # No matching work session exists yet.
         # Generate conflict-free recommendations.
-        # -------------------------------------------------
         else:
             suggestions = suggest_free_slots(
                 date=event["date"],
@@ -456,6 +452,58 @@ def _render_attention_view(
 
     return True
 
+
+def _render_email_group(
+    title: str,
+    emails: list[dict],
+    empty_message: str,
+) -> None:
+    """Render one section of the Inbox Brief."""
+
+    st.subheader(title)
+
+    if not emails:
+        st.caption(empty_message)
+        return
+
+    for email in emails:
+        sender = (
+            email.get("sender")
+            or "Unknown sender"
+        )
+
+        subject = (
+            email.get("subject")
+            or "(No subject)"
+        )
+
+        summary = email.get("summary")
+        priority = email.get("priority")
+        deadline = email.get("deadline")
+
+        with st.container(border=True):
+            st.markdown(f"**{subject}**")
+            st.caption(sender)
+
+            if summary:
+                st.write(summary)
+
+            metadata = []
+
+            if priority:
+                metadata.append(
+                    f"Priority: {priority}"
+                )
+
+            if deadline:
+                metadata.append(
+                    f"Deadline: {deadline}"
+                )
+
+            if metadata:
+                st.caption(" · ".join(metadata))
+
+
 runtime = start_runtime()
 
 
@@ -493,6 +541,7 @@ with st.sidebar:
         [
             "Chat",
             "Dashboard",
+            "Inbox",
             "Calendar",
             "Preferences",
             "System",
@@ -527,9 +576,8 @@ if page == "Chat":
     st.title("Ask your Chief of Staff")
 
     st.caption(
-        "Ask about your schedule, create study blocks, "
-        "check monitoring status, or manage opportunity "
-        "preferences."
+        "Ask about your schedule, inbox, create study blocks, "
+        "check monitoring status, or manage opportunity preferences."
     )
 
     for message in st.session_state.messages:
@@ -537,8 +585,7 @@ if page == "Chat":
             st.markdown(message["content"])
 
     prompt = st.chat_input(
-        "e.g. What do I have tomorrow, and where can I "
-        "fit 2 hours of CIS 1210?"
+        "e.g. Give me my inbox brief, or where can I fit 2 hours of CIS 1210?"
     )
 
     if prompt:
@@ -573,6 +620,133 @@ if page == "Chat":
                 "content": response,
             }
         )
+
+
+# ============================================================
+# INBOX
+# ============================================================
+
+elif page == "Inbox":
+    brief = build_email_brief()
+
+    window = brief["window"]
+
+    start = datetime.fromisoformat(
+        window["start"]
+    ).astimezone(
+        ZoneInfo(LOCAL_TIMEZONE)
+    )
+
+    end = datetime.fromisoformat(
+        window["end"]
+    ).astimezone(
+        ZoneInfo(LOCAL_TIMEZONE)
+    )
+
+    st.title("Inbox Brief")
+
+    st.caption(
+        f"{start.strftime('%-I:%M %p')} – "
+        f"{end.strftime('%-I:%M %p')} ET"
+    )
+
+    total = brief["total_received"]
+    attention = brief["needs_attention"]
+    responses = brief["needs_response"]
+    opportunities = brief["opportunities"]
+    important = brief["important_updates"]
+    other = brief["everything_else"]
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.metric(
+            "Received",
+            total,
+            "emails",
+        )
+
+    with c2:
+        st.metric(
+            "Needs attention",
+            len(attention),
+        )
+
+    with c3:
+        st.metric(
+            "Needs response",
+            len(responses),
+        )
+
+    with c4:
+        st.metric(
+            "Opportunities",
+            len(opportunities),
+        )
+
+    st.divider()
+
+    _render_email_group(
+        "🚨 Needs attention",
+        attention,
+        "Nothing currently needs your attention.",
+    )
+
+    st.divider()
+
+    _render_email_group(
+        "💬 Needs a response",
+        responses,
+        "No emails currently need a reply.",
+    )
+
+    st.divider()
+
+    _render_email_group(
+        "🎯 Opportunities",
+        opportunities,
+        "No opportunities in this brief.",
+    )
+
+    st.divider()
+
+    _render_email_group(
+        "📚 Important updates",
+        important,
+        "No important informational updates.",
+    )
+
+    st.divider()
+
+    with st.expander(
+        f"Everything else ({len(other)})"
+    ):
+        if not other:
+            st.caption(
+                "No other emails in this brief."
+            )
+
+        else:
+            for email in other:
+                subject = (
+                    email.get("subject")
+                    or "(No subject)"
+                )
+
+                sender = (
+                    email.get("sender")
+                    or "Unknown sender"
+                )
+
+                st.markdown(f"**{subject}**")
+                st.caption(sender)
+
+                summary = email.get("summary")
+
+                if summary:
+                    st.write(summary)
+
+                st.divider()
 
 
 # ============================================================
@@ -618,35 +792,29 @@ elif page == "Dashboard":
 
     with c3:
         scheduler = (
-            monitor.get("scheduler_status")
-            or {}
+            monitor.get("scheduler_status") or {}
         )
 
         st.metric(
             "Background monitor",
-            (
-                "Running"
-                if scheduler.get("running")
-                else "Idle"
-            ),
+            "Running"
+            if scheduler.get("running")
+            else "Idle",
         )
 
     with c4:
         st.metric(
             "Last error",
-            (
-                "None"
-                if not monitor.get("last_error")
-                else "Needs attention"
-            ),
+            "None"
+            if not monitor.get("last_error")
+            else "Needs attention",
         )
 
     st.subheader("Today")
 
     if not today_events:
         st.info(
-            "Nothing is currently scheduled "
-            "for today."
+            "Nothing is currently scheduled for today."
         )
 
     else:
@@ -654,12 +822,8 @@ elif page == "Dashboard":
             st.markdown(
                 f"""
                 <div class="event-card">
-                    <strong>
-                        {event.get("title", "Untitled event")}
-                    </strong><br/>
-                    <span class="muted">
-                        {_event_time(event)}
-                    </span>
+                    <strong>{event.get("title", "Untitled event")}</strong><br/>
+                    <span class="muted">{_event_time(event)}</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -728,9 +892,7 @@ elif page == "Calendar":
                 st.markdown(
                     f"""
                     <div class="event-card">
-                        <strong>
-                            {_event_time(event)}
-                        </strong><br/>
+                        <strong>{_event_time(event)}</strong><br/>
                         {event.get("title", "Untitled event")}
                     </div>
                     """,
@@ -756,11 +918,7 @@ elif page == "Preferences":
 
     with left:
         st.subheader("Target roles")
-
-        roles = profile.get(
-            "target_roles"
-        ) or []
-
+        roles = profile.get("target_roles") or []
         st.write(
             "\n".join(
                 f"- {item}"
@@ -770,11 +928,7 @@ elif page == "Preferences":
         )
 
         st.subheader("Skills")
-
-        skills = profile.get(
-            "skills"
-        ) or []
-
+        skills = profile.get("skills") or []
         st.write(
             "\n".join(
                 f"- {item}"
@@ -785,11 +939,7 @@ elif page == "Preferences":
 
     with right:
         st.subheader("Interests")
-
-        interests = profile.get(
-            "interests"
-        ) or []
-
+        interests = profile.get("interests") or []
         st.write(
             "\n".join(
                 f"- {item}"
@@ -799,11 +949,7 @@ elif page == "Preferences":
         )
 
         st.subheader("Locations")
-
-        locations = profile.get(
-            "locations"
-        ) or []
-
+        locations = profile.get("locations") or []
         st.write(
             "\n".join(
                 f"- {item}"
@@ -813,10 +959,8 @@ elif page == "Preferences":
         )
 
     st.caption(
-        "To change these, use Chat. "
-        "The agent will update the same "
-        "persistent profile used by the "
-        "opportunity matcher."
+        "To change these, use Chat. The agent will update "
+        "the same persistent profile used by the opportunity matcher."
     )
 
 
@@ -828,22 +972,17 @@ elif page == "System":
     st.title("System status")
 
     status = get_runtime_status()
-
     scheduler = (
-        status.get("scheduler_status")
-        or {}
+        status.get("scheduler_status") or {}
     )
 
     c1, c2 = st.columns(2)
 
     with c1:
         st.subheader("Background monitor")
-
         st.json(
             {
-                "running": scheduler.get(
-                    "running"
-                ),
+                "running": scheduler.get("running"),
                 "interval_seconds": scheduler.get(
                     "interval_seconds"
                 ),
@@ -858,7 +997,6 @@ elif page == "System":
 
     with c2:
         st.subheader("Latest activity")
-
         st.json(
             {
                 "last_gmail_sync": status.get(
@@ -880,8 +1018,7 @@ elif page == "System":
         )
 
     st.caption(
-        "The Streamlit server starts the same "
-        "RuntimeOrchestrator used by the terminal app. "
-        "Do not run the terminal UI and Streamlit UI "
-        "at the same time."
+        "The Streamlit server starts the same RuntimeOrchestrator "
+        "used by the terminal app. Do not run the terminal UI and "
+        "Streamlit UI at the same time."
     )

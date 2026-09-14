@@ -84,6 +84,7 @@ def initialize_database() -> None:
             category TEXT,
             priority TEXT,
             action_required INTEGER NOT NULL DEFAULT 0,
+            response_required INTEGER NOT NULL DEFAULT 0,
             action_type TEXT,
             summary TEXT,
             reason TEXT,
@@ -93,6 +94,21 @@ def initialize_database() -> None:
         )
         """
     )
+
+    email_analysis_columns = {
+        row["name"]
+        for row in cursor.execute(
+            "PRAGMA table_info(email_analysis)"
+        ).fetchall()
+    }
+
+    if "response_required" not in email_analysis_columns:
+        cursor.execute(
+            """
+            ALTER TABLE email_analysis
+            ADD COLUMN response_required INTEGER NOT NULL DEFAULT 0
+            """
+        )
 
     # --------------------------------------------------------
     # CALENDAR EVENTS
@@ -375,6 +391,56 @@ def get_recent_emails(
 
     return [dict(row) for row in rows]
 
+def get_email_brief_records(
+    start_timestamp: str,
+    end_timestamp: str,
+) -> list[dict[str, Any]]:
+    """
+    Return analyzed emails received within a time window.
+
+    Results are sorted newest first.
+    """
+
+    connection = get_connection()
+
+    rows = connection.execute(
+        """
+        SELECT
+            e.id,
+            e.sender,
+            e.recipient,
+            e.subject,
+            e.timestamp,
+            e.read,
+            a.category,
+            a.priority,
+            a.action_required,
+            a.response_required,
+            a.action_type,
+            a.summary,
+            a.reason,
+            a.deadline
+        FROM emails AS e
+        LEFT JOIN email_analysis AS a
+            ON a.email_id = e.id
+        WHERE
+            e.timestamp >= ?
+            AND e.timestamp < ?
+        ORDER BY e.timestamp DESC
+        """,
+        (
+            start_timestamp,
+            end_timestamp,
+        ),
+    ).fetchall()
+
+    connection.close()
+
+    return [
+        dict(row)
+        for row in rows
+    ]
+
 
 def get_unread_emails() -> list[dict[str, Any]]:
     """
@@ -514,6 +580,7 @@ def save_email_analysis(
     summary: str,
     reason: str,
     deadline: str | None,
+    response_required: bool = False,
 ) -> None:
     """
     Save the agent's analysis of an email.
@@ -542,18 +609,20 @@ def save_email_analysis(
             category,
             priority,
             action_required,
+            response_required,
             action_type,
             summary,
             reason,
             deadline,
             analyzed_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
         ON CONFLICT(email_id) DO UPDATE SET
             category = excluded.category,
             priority = excluded.priority,
             action_required = excluded.action_required,
+            response_required = excluded.response_required,
             action_type = excluded.action_type,
             summary = excluded.summary,
             reason = excluded.reason,
@@ -565,6 +634,7 @@ def save_email_analysis(
             category,
             priority,
             int(action_required),
+            int(response_required),
             action_type,
             summary,
             reason,

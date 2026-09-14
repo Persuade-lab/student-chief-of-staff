@@ -178,6 +178,16 @@ def validate_email_analysis(
         analysis.get("action_required")
     )
 
+    response_required = analysis.get(
+    "response_required"
+    )
+
+    if not isinstance(response_required, bool):
+        raise ValueError(
+            "Invalid response_required returned by classifier: "
+            f"{response_required!r}"
+        )
+
     summary = validate_summary(
         analysis.get("summary")
     )
@@ -194,6 +204,7 @@ def validate_email_analysis(
         "category": category,
         "priority": priority,
         "action_required": action_required,
+        "response_required": response_required,
         "summary": summary,
         "reason": reason,
         "deadline": deadline,
@@ -295,6 +306,7 @@ def process_email(
         summary=analysis["summary"],
         reason=analysis["reason"],
         deadline=analysis["deadline"],
+        response_required=analysis["response_required"],
     )
 
     notification_analysis = {
@@ -321,6 +333,7 @@ def process_email(
         "category": analysis["category"],
         "priority": analysis["priority"],
         "action_required": analysis["action_required"],
+        "response_required": analysis["response_required"],
         "action_type": planned_action.action_type,
         "summary": analysis["summary"],
         "reason": analysis["reason"],

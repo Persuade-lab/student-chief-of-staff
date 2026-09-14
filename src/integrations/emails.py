@@ -15,7 +15,8 @@ That responsibility belongs to the processing layer.
 from typing import Any
 import base64
 from email.message import EmailMessage
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
+from zoneinfo import ZoneInfo
 
 from strands import tool
 
@@ -26,7 +27,11 @@ from src.storage.database import (
     get_email as get_stored_email,
     get_recent_emails as get_stored_recent_emails,
     get_unread_emails as get_stored_unread_emails,
+    get_email_brief_records,
 )
+
+LOCAL_TIMEZONE = ZoneInfo("America/New_York")
+BRIEF_START_HOUR = 6
 
 
 # ============================================================
@@ -255,6 +260,117 @@ def _create_email_draft(
         "status": "draft",
     }
 
+# ============================================================
+# EMAIL BRIEFS
+# ============================================================
+
+def _current_inbox_brief_window(
+    now: datetime | None = None,
+) -> tuple[datetime, datetime]:
+    """
+    Return the current rolling Inbox Brief window.
+
+    A new window starts every day at 6:00 AM local time.
+    The current window ends at the current time.
+    """
+
+    current = now or datetime.now(LOCAL_TIMEZONE)
+
+    today_at_six = datetime.combine(
+        current.date(),
+        time(hour=BRIEF_START_HOUR),
+        tzinfo=LOCAL_TIMEZONE,
+    )
+
+    if current >= today_at_six:
+        start = today_at_six
+    else:
+        previous_day = current.date().fromordinal(
+            current.date().toordinal() - 1
+        )
+
+        start = datetime.combine(
+            previous_day,
+            time(hour=BRIEF_START_HOUR),
+            tzinfo=LOCAL_TIMEZONE,
+        )
+
+    return start, current
+
+def build_email_brief(
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """
+    Build the current rolling Inbox Brief from stored email analysis.
+    """
+
+    start, end = _current_inbox_brief_window(now)
+
+    records = get_email_brief_records(
+        start.astimezone(timezone.utc).isoformat(),
+        end.astimezone(timezone.utc).isoformat(),
+    )
+
+    needs_attention = []
+    needs_response = []
+    opportunities = []
+    important_updates = []
+    everything_else = []
+
+    for email in records:
+        priority = email.get("priority")
+        category = email.get("category")
+
+        action_required = bool(
+            email.get("action_required")
+        )
+
+        response_required = bool(
+            email.get("response_required")
+        )
+
+        if response_required:
+            needs_response.append(email)
+
+        if (
+            action_required
+            or priority in {"high", "urgent"}
+        ):
+            needs_attention.append(email)
+
+        if category == "opportunity":
+            opportunities.append(email)
+
+        if (
+            priority in {"high", "urgent"}
+            and not action_required
+            and not response_required
+        ):
+            important_updates.append(email)
+
+        if (
+            not action_required
+            and not response_required
+            and category != "opportunity"
+            and priority not in {"high", "urgent"}
+        ):
+            everything_else.append(email)
+
+    return {
+        "window": {
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "timezone": "America/New_York",
+            "status": "in_progress",
+        },
+        "total_received": len(records),
+        "needs_attention": needs_attention,
+        "needs_response": needs_response,
+        "opportunities": opportunities,
+        "important_updates": important_updates,
+        "everything_else": everything_else,
+    }
+
 
 # ============================================================
 # AGENT TOOLS
@@ -342,3 +458,20 @@ def draft_email(
         subject=subject,
         body=body,
     )
+
+@tool
+def get_email_brief() -> dict[str, Any]:
+    """
+    Return the student's current rolling Inbox Brief.
+
+    The brief covers emails received since the most recent
+    6:00 AM America/New_York boundary.
+
+    Use this when the student asks:
+    - what important emails they received
+    - which emails need attention
+    - which emails likely need a reply
+    - for an inbox summary or email brief
+    """
+
+    return build_email_brief()

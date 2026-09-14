@@ -20,6 +20,13 @@ from src.storage.memory import (
 )
 from src.storage.state import get_runtime_status
 
+from src.integrations.emails import (
+    draft_email,
+    get_email,
+    get_email_brief,
+    get_recent_emails,
+    get_unread_emails,
+)
 
 def _csv(value: str | None) -> list[str] | None:
     if value is None:
@@ -112,6 +119,14 @@ CALENDAR_TOOLS = [
     reschedule_event,
 ]
 
+EMAIL_TOOLS = [
+    get_email_brief,
+    get_recent_emails,
+    get_unread_emails,
+    get_email,
+    draft_email,
+]
+
 PROFILE_AND_STATUS_TOOLS = [
     get_background_monitor_status,
     get_student_preferences,
@@ -123,4 +138,8 @@ PROFILE_AND_STATUS_TOOLS = [
 def get_tools():
     """Return every tool available to the coordinator agent."""
 
-    return CALENDAR_TOOLS + PROFILE_AND_STATUS_TOOLS
+    return (
+        CALENDAR_TOOLS
+        + EMAIL_TOOLS
+        + PROFILE_AND_STATUS_TOOLS
+    )
