@@ -2,7 +2,6 @@ credentials.json
 token.json
 .env
 student_chief_of_staff.db
-Not_used
 
 # Python
 .venv/
