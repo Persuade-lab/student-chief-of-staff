@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
+import os
 import sys
 from zoneinfo import ZoneInfo
 
@@ -11,6 +12,14 @@ import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
+
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
+# The hosted demo must never try to write to a real Google Calendar.
+# Setting this before importing the calendar integration makes its write
+# operations use the local SQLite database instead.
+if DEMO_MODE:
+    os.environ["CALENDAR_BACKEND"] = "database"
 
 
 # Make `src` imports work when launched with:
@@ -20,6 +29,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.agent.chief_of_staff import reset_agent, run_agent
+from src.demo.demo_data import seed_demo_data
 from src.integrations.calendar import add_event, suggest_free_slots
 from src.integrations.emails import build_email_brief
 from src.runtime.orchestrator import RuntimeOrchestrator
@@ -77,10 +87,19 @@ st.markdown(
 
 
 @st.cache_resource
-def start_runtime() -> RuntimeOrchestrator:
-    """Start the monitor only once for the life of the Streamlit server."""
+def start_runtime() -> RuntimeOrchestrator | None:
+    """
+    Initialize the app once for the life of the Streamlit server.
+
+    Local mode starts the real background monitor. Hosted demo mode seeds
+    sanitized data and intentionally skips Gmail/Google Calendar monitoring.
+    """
 
     initialize_database()
+
+    if DEMO_MODE:
+        seed_demo_data()
+        return None
 
     runtime = RuntimeOrchestrator()
     runtime.start()
@@ -551,13 +570,17 @@ with st.sidebar:
 
     st.divider()
 
-    status = get_runtime_status()
-    last_error = status.get("last_error")
-
-    if last_error:
-        st.error("Monitor needs attention")
+    if DEMO_MODE:
+        st.info("Hosted demo mode")
+        st.caption("Sanitized sample data · no personal accounts connected")
     else:
-        st.success("Monitor healthy")
+        status = get_runtime_status()
+        last_error = status.get("last_error")
+
+        if last_error:
+            st.error("Monitor needs attention")
+        else:
+            st.success("Monitor healthy")
 
     if st.button(
         "New conversation",
@@ -767,6 +790,13 @@ elif page == "Dashboard":
     monitor = get_runtime_status()
     upcoming = _upcoming_events(7)
 
+    if DEMO_MODE:
+        st.info(
+            "Demo Mode is using sanitized sample email and calendar data. "
+            "The production app connects to Gmail, Google Calendar, Canvas, "
+            "and runs the background monitor locally."
+        )
+
     today_events = [
         event
         for event in upcoming
@@ -797,9 +827,13 @@ elif page == "Dashboard":
 
         st.metric(
             "Background monitor",
-            "Running"
-            if scheduler.get("running")
-            else "Idle",
+            "Demo"
+            if DEMO_MODE
+            else (
+                "Running"
+                if scheduler.get("running")
+                else "Idle"
+            ),
         )
 
     with c4:
@@ -971,6 +1005,12 @@ elif page == "Preferences":
 elif page == "System":
     st.title("System status")
 
+    if DEMO_MODE:
+        st.info(
+            "Hosted Demo Mode is active. Real Gmail/Google Calendar syncing "
+            "and native macOS notifications are disabled in the public demo."
+        )
+
     status = get_runtime_status()
     scheduler = (
         status.get("scheduler_status") or {}
@@ -1017,8 +1057,15 @@ elif page == "System":
             }
         )
 
-    st.caption(
-        "The Streamlit server starts the same RuntimeOrchestrator "
-        "used by the terminal app. Do not run the terminal UI and "
-        "Streamlit UI at the same time."
-    )
+    if DEMO_MODE:
+        st.caption(
+            "The public demo uses sanitized SQLite data. In local mode, "
+            "Streamlit starts the same RuntimeOrchestrator used by the "
+            "terminal app."
+        )
+    else:
+        st.caption(
+            "The Streamlit server starts the same RuntimeOrchestrator "
+            "used by the terminal app. Do not run the terminal UI and "
+            "Streamlit UI at the same time."
+        )

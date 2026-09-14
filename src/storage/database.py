@@ -5,6 +5,7 @@ Currently uses SQLite because it is lightweight, local, and requires
 no separate database server.
 """
 
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,7 +18,13 @@ from typing import Any
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-DATABASE_FILE = BASE_DIR / "student_chief_of_staff.db"
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
+DATABASE_FILE = (
+    BASE_DIR / "student_chief_of_staff_demo.db"
+    if DEMO_MODE
+    else BASE_DIR / "student_chief_of_staff.db"
+)
 
 
 # ============================================================
