@@ -603,7 +603,7 @@ Run the automated test suite with:
 python -m pytest -q
 ```
 
-The MVP currently passes **54 automated tests** covering calendar operations, email processing, storage, scheduling behavior, all-day events, notification behavior, and other core functionality.
+The MVP currently passes **76 automated tests** covering calendar operations, email processing, storage, scheduling behavior, all-day events, notification behavior, and other core functionality.
 
 ---
 
